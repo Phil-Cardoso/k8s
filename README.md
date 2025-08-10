@@ -120,3 +120,36 @@ kubectl create namespace storage
 ```
 
 Cada namespace representará uma parte específica da arquitetura (execução, orquestração, visualização e armazenamento), permitindo um gerenciamento mais organizado e seguro dos recursos no cluster.
+
+## Reiniciando o Cluster após Reboot
+Se sua máquina for reiniciada, o Minikube pode não iniciar completamente sozinho. Mesmo que o contêiner ainda esteja em execução via Docker, o kubelet e o apiserver podem não estar ativos. Para resolver isso sem recriar o cluster, siga os passos abaixo:
+
+1. Verifique se o contêiner do Minikube está rodando:
+```bash
+docker ps
+```
+
+2. Acesse o contêiner do Minikube:
+```bash
+docker exec -it minikube bash
+```
+
+3. Dentro do contêiner, inicie o serviço kubelet manualmente:
+```bash
+sudo systemctl start kubelet
+```
+
+4. Saia do contêiner e verifique novamente o status:
+```bash
+minikube status
+```
+
+O retorno esperado é:
+```txt
+minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+```
