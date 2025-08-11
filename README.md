@@ -58,7 +58,7 @@ Para utilizar o Kubernetes (k8s), é necessário ter um cluster em execução, q
 
 Agora que já temos todos os pré-requisitos instalados, podemos iniciar o cluster com o seguinte comando:
 ```bash
-minikube start --driver=docker
+minikube start --cpus 4 --memory 7837MB --driver=docker
 ```
 
 Esse comando irá criar um cluster local com uma configuração padrão, pronto para receber recursos do Kubernetes.
