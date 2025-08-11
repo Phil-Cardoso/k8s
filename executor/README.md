@@ -55,7 +55,7 @@ kubectl get namespaces
 
 4. Dê permissão de execução ao arquivo `.sh`:
 ```bash
-chmod +x install-spark-operator.sh        
+chmod +x install-spark-operator.sh
 ```
 
 5. Execute o script:
