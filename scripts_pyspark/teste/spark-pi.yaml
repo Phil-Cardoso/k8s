@@ -13,6 +13,7 @@
     sparkVersion: "3.5.0"
     restartPolicy:
       type: Never
+    timeToLiveSeconds: 300
     driver:
       cores: 1
       memory: 512m
