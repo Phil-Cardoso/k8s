@@ -10,16 +10,16 @@ O script `install-spark-operator.sh`presente nesta pasta executa os seguintes pa
 
 1. Adiciona o repositório Helm do Spark Operator:
 ```bash
-helm repo add spark-operator https://kubeflow.github.io/spark-operator
+helm repo add spark-operator https://googlecloudplatform.github.io/spark-on-k8s-operator
 ```
-Caso queira, você pode visitar a [página oficial do projeto](https://kubeflow.github.io/spark-operator) para mais informações.
+Caso queira, você pode visitar a [página oficial do projeto](https://googlecloudplatform.github.io/spark-on-k8s-operator) para mais informações.
 
 2. Atualiza a lista de charts disponíveis:
 ```bash
 helm repo update
 ```
 
-3. Instala o Spark Operator no namespace executor:
+3. Instala o Spark Operator no namespace executor e aguarda sua ativação:
 ```bash
 helm install spark-operator spark-operator/spark-operator \
   --namespace executor \
@@ -28,8 +28,19 @@ helm install spark-operator spark-operator/spark-operator \
   --set webhook.enable=true \
   --set serviceAccounts.spark.name=spark \
   --set enableBatchScheduler=true \
-  --set batchScheduler.enable=true
+  --set batchScheduler.enable=true \
+  --wait
 ```
+
+4. Concede as permissões necessárias para manipular os pods:
+```bash
+kubectl apply -f spark-operator-rolebinding.yaml
+kubectl apply -f spark-cleanup-rolebinding.yaml
+kubectl apply -f spark-cleanup-role.yaml
+kubectl apply -f RoleBinding.yaml
+kubectl apply -f role.yaml
+```
+
 
 ## Namespace `executor`
 Todos os recursos criados serão organizados no namespace executor, que representa o ambiente responsável pela execução de pipelines e scripts ETL usando Spark.
