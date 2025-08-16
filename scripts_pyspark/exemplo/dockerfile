@@ -1,5 +1,6 @@
 FROM bitnami/spark:3.5
 
-COPY pi.py /opt/spark-apps/pi.py
-
-CMD ["/opt/bitnami/spark/bin/spark-submit", "--master", "k8s://https://kubernetes.default.svc", "--deploy-mode", "cluster", "--name", "spark-pi", "--conf", "spark.kubernetes.container.image=pi-spark:latest", "/opt/spark-apps/pi.py"]
+WORKDIR /opt/spark-apps
+COPY scripts/ .
+COPY requirements.txt .
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
