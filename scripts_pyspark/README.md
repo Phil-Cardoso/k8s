@@ -139,9 +139,78 @@ Esse passo garante que todas as bibliotecas necessárias para o script sejam ins
 
 ## GitHub Container Registry (GHCR)
 
-Para realizar um processo mais próximo do ambiente real de produção, este exemplo irá mostrar como publicar a imagem no **GitHub Container Registry (GHCR)**.
+Para realizar um processo mais próximo de um ambiente real de produção, este exemplo mostra como publicar uma imagem no **GitHub Container Registry (GHCR)**.
 
 O GHCR é gratuito, permite criar repositórios **privados** de imagens e, caso necessário, pode ser integrado facilmente com **GitHub Actions** para automatizar pipelines de CI/CD.
 
+A seguir, estão descritas as etapas de configuração. Vale lembrar que é necessário ter uma conta no [GitHub](https://github.com).
+
+---
+
+### 1. Build da imagem localmente
+
+Antes de começar, certifique-se de que você:
+
+* Possui uma conta no [GitHub](https://github.com)
+* Tem o Git configurado corretamente em sua máquina
+
+Agora, acesse a pasta onde está localizado o `Dockerfile` desejado e execute o comando abaixo para construir a imagem:
+
+```bash
+docker build -t ghcr.io/SEU_USUARIO/NOME_DA_IMAGEM:latest .
+```
+
+* `docker build`: comando responsável por construir a imagem
+* `-t`: define a tag (nome + versão) da imagem
+* `ghcr.io`: especifica que a imagem será usada com o **GitHub Container Registry**
+* `SEU_USUARIO`: seu nome de usuário no GitHub
+* `NOME_DA_IMAGEM`: nome que você deseja dar à imagem
+* `latest`: tag da imagem (versão). Neste caso, usamos `latest` como padrão
+* `.`: indica que o Dockerfile está no diretório atual
+
+Exemplo:
+```bash
+docker build -t ghcr.io/phil-cardoso/spark-pi:latest .
+```
+
+### 2. Autenticar-se no GHCR
+
+#### Gere um token no GitHub:
+1. Acesse: https://github.com/settings/tokens
+2. Clique em "Generate new token" (classic ou fine-grained)
+3. Dê as permissões:
+    * `read:packages`
+    * `write:packages`
+    * `delete:packages` (*opcional, mas recomendado*)
+4. Copie o token e **guarde com segurança**
+
+#### Faça login no terminal:
+```bash
+echo <SEU_TOKEN> | docker login ghcr.io -u SEU_USUARIO --password-stdin
+```
+* `<SEU_TOKEN>`: o token que você acabou de gerar
+* `SEU_USUARIO` seu nome de usuário no GitHub
+
+### 3. Push da imagem para o GHCR
+Depois de realizar o build e o login com sucesso, execute:
+```bash
+docker push ghcr.io/SEU_USUARIO/NOME_DA_IMAGEM:latest
+```
+
+Exemplo:
+```bash
+docker push ghcr.io/phil-cardoso/spark-pi:latest
+```
+
+### 4. Visualizar imagem no github
+Para verificar se o processo foi bem-sucedido, acesse:
+
+`https://github.com/users/SEU_USUARIO/packages`
+
+Lá você poderá visualizar a imagem publicada, junto com a tag informada (por exemplo: `latest`).
+
+### Observasões
+* Após a primeira configuração, **não é necessário repetir os passos de login**, apenas o build e push das novas versões das imagens.
+* Fique atento à **expiração do token**. É uma boa prática usar tokens com validade limitada e renová-los periodicamente para garantir segurança.
 
 ## Manifesto YAML
