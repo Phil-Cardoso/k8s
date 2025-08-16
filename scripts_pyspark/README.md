@@ -6,6 +6,7 @@ Para executar um script dentro de um cluster Kubernetes (K8s), são necessários
 * **Arquivos auxiliares** utilizados pelo script (módulos, dados, configs, etc.)
 * **Arquivo** `requirements.txt` com as bibliotecas e versões necessárias
 * **Dockerfile** para construir a imagem do container com o ambiente apropriado
+* **GitHub Container Registry (GHCR)** para registrar as imagens construidas a partir do `dockerfile`
 * **Manifesto YAML** com as instruções para criação da aplicação (Pod, Job, Deployment, etc.)
 
 ## Script principal
@@ -87,5 +88,60 @@ pip freeze > requirements.txt
 Isso garantirá que todas as bibliotecas (e suas versões) utilizadas no desenvolvimento estejam corretamente listadas para replicação do ambiente em produção, visto que o `virtualenv` cria um ambiente isolado para o seu script.
 
 ## Dockerfile
+O `Dockerfile` é o arquivo responsável por construir a imagem Docker que será utilizada dentro do Kubernetes (K8s), incluindo o script principal e todas as suas dependências.
+
+Abaixo está um exemplo de `Dockerfile` criado para o script `pi.py`, localizado na pasta `scripts/`:
+
+```dockerfile
+FROM bitnami/spark:3.5
+
+WORKDIR /opt/spark-apps
+
+# Copia o script para dentro da imagem
+COPY pi.py .
+
+# Copia e instala as dependências, se houver
+COPY requirements.txt .
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+```
+
+### Explicação
+
+```dockerfile
+FROM bitnami/spark:3.5
+```
+* Define a imagem base que será usada para construir a nova imagem.
+* A imagem `bitnami/spark:3.5` já vem com o Apache Spark pré-instalado e configurado para rodar em ambientes Kubernetes. Isso evita a necessidade de configurar o Spark manualmente.
+
+```dockerfile
+WORKDIR /opt/spark-apps
+```
+* Define o diretório de trabalho dentro da imagem.
+* Todos os comandos posteriores serão executados a partir de `/opt/spark-apps`.
+
+```dockerfile
+COPY pi.py .
+```
+* Copia o arquivo `pi.py` (script principal) do seu diretório local para dentro da imagem, dentro da pasta `/opt/spark-apps`.
+* O ponto final (`.`) indica que o destino é o diretório de trabalho atual (definido anteriormente com `WORKDIR`).
+
+```dockerfile
+COPY requirements.txt .
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+```
+* Copia o arquivo `requirements.txt` para dentro da imagem.
+* Em seguida, executa um comando `RUN` que:
+    * Verifica se o arquivo `requirements.txt` existe
+    * Se existir, instala todas as bibliotecas listadas usando `pip install`
+    * A opção `--no-cache-dir` evita armazenar arquivos temporários.
+
+Esse passo garante que todas as bibliotecas necessárias para o script sejam instaladas no ambiente da imagem.
+
+## GitHub Container Registry (GHCR)
+
+Para realizar um processo mais próximo do ambiente real de produção, este exemplo irá mostrar como publicar a imagem no **GitHub Container Registry (GHCR)**.
+
+O GHCR é gratuito, permite criar repositórios **privados** de imagens e, caso necessário, pode ser integrado facilmente com **GitHub Actions** para automatizar pipelines de CI/CD.
+
 
 ## Manifesto YAML
