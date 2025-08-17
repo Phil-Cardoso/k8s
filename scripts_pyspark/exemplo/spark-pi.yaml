@@ -1,28 +1,31 @@
-  apiVersion: sparkoperator.k8s.io/v1beta2
-  kind: SparkApplication
-  metadata:
-    name: spark-pi
-    namespace: default
-  spec:
-    type: Python
-    pythonVersion: "3"
-    mode: cluster
-    image: pi-spark:latest
-    imagePullPolicy: Never
-    mainApplicationFile: "local:///opt/spark-apps/pi.py"
-    sparkVersion: "3.5.0"
-    restartPolicy:
-      type: Never
-    timeToLiveSeconds: 300
-    driver:
-      cores: 1
-      memory: 512m
-      serviceAccount: spark
-      labels:
-        version: 3.5.0
-    executor:
-      cores: 1
-      instances: 1
-      memory: 512m
-      labels:
-        version: 3.5.0
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: spark-pi
+  namespace: default
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: ghcr.io/phil-cardoso/spark-pi:latest
+  imagePullPolicy: Always
+  # Referência à secret para autenticação no GitHub Container Registry (GHCR)
+  imagePullSecrets:
+    - name: ghcr-secret
+  mainApplicationFile: "local:///opt/spark-apps/pi.py"
+  sparkVersion: "3.5.0"
+  restartPolicy:
+    type: Never
+  timeToLiveSeconds: 300
+  driver:
+    cores: 1
+    memory: 512m
+    serviceAccount: spark
+    labels:
+      version: 3.5.0
+  executor:
+    cores: 1
+    instances: 1
+    memory: 512m
+    labels:
+      version: 3.5.0
