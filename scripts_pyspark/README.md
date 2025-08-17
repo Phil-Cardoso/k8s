@@ -209,8 +209,181 @@ Para verificar se o processo foi bem-sucedido, acesse:
 
 Lá você poderá visualizar a imagem publicada, junto com a tag informada (por exemplo: `latest`).
 
+### Imagem local
+Ao executar o comando `docker build`, a imagem gerada é armazenada localmente no Docker, ocupando espaço em disco. 
+
+Como essa imagem já foi publicada no **GitHub Container Registry (GHCR)**, ela **pode ser removida do ambiente local** sem impacto.
+
+#### Comando para apagar uma imagem específica:
+```bash
+docker rmi ghcr.io/SEU_USUARIO/NOME_DA_IMAGEM:latest
+```
+
+Exemplo:
+```bash
+docker rmi ghcr.io/phil-cardoso/spark-pi:latest
+```
+
+#### Comando para apagar imagens, containers e volumes não utilizados (cache):
+```bash
+docker system prune -f
+```
+
 ### Observasões
 * Após a primeira configuração, **não é necessário repetir os passos de login**, apenas o build e push das novas versões das imagens.
 * Fique atento à **expiração do token**. É uma boa prática usar tokens com validade limitada e renová-los periodicamente para garantir segurança.
+* Os comandos apresentados aqui têm como objetivo explicar detalhadamente o processo, mas também será fornecido um script `apply.sh` com os comandos de **build**, **push** e **limpeza** para facilitar a execução.
 
 ## Manifesto YAML
+Esta etapa consiste em registrar o script no Kubernetes por meio de um manifesto YAML. O que estamos criando com esse manifesto é um recurso do tipo **SparkApplication** (um objeto customizado gerenciado pelo Spark Operator).
+
+Antes disso, é importante garantir que o cluster esteja configurado para autenticar e baixar a imagem armazenada no **GitHub Container Registry (GHCR)**.
+
+### Criando secret no Kubernetes
+Para que o cluster consiga acessar a imagem presente no repositório do GitHub, precisamos cadastrar o **TOKEN** e o **USER_NAME** em uma secret dentro do Kubernetes. Isso garante que o cluster acesse as credenciais de forma segura.
+
+Exemplo de comando para executar no terminal/bash:
+```bash
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=phil-cardoso \
+  --docker-password=SEU_TOKEN_AQUI \
+  --docker-email=qualquer@email.com
+```
+O e-mail pode ser qualquer valor (o campo é exigido, mas é irrelevante para autenticação no GHCR)
+
+Este comando cria uma secret chamada `ghcr-secret` dentro do Kubernetes.
+
+### Arquivo `yaml`
+
+A seguir, um arquivo `.yaml` preenchido com as instruções necessárias para criar um recurso do tipo **SparkApplication**:
+```yaml
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: spark-pi
+  namespace: default
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: ghcr.io/phil-cardoso/spark-pi:latest
+  imagePullPolicy: Always
+  # Referência à secret para autenticação no GitHub Container Registry (GHCR)
+  imagePullSecrets:
+    - name: ghcr-secret
+  mainApplicationFile: "local:///opt/spark-apps/pi.py"
+  sparkVersion: "3.5.0"
+  restartPolicy:
+    type: Never
+  timeToLiveSeconds: 300
+  driver:
+    cores: 1
+    memory: 512m
+    serviceAccount: spark
+    labels:
+      version: 3.5.0
+  executor:
+    cores: 1
+    instances: 1
+    memory: 512m
+    labels:
+      version: 3.5.0
+```
+
+#### Explicando o manifesto YAML
+
+```bash
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+```
+* **apiVersion**: Define a versão da API do Spark Operator.
+* **kind**: O tipo de recurso. Neste caso, um `SparkApplication`.
+
+```bash
+metadata:
+  name: spark-pi
+  namespace: default
+```
+* **metadata.name**: Nome da aplicação Spark.
+* **metadata.namespace**: Namespace do Kubernetes onde o recurso será criado.
+
+```bash
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+```
+* **spec.type**: Define o tipo de aplicação Spark (`Python`, `Scala`, `Java`).
+* **spec.pythonVersion**: Versão do Python usada no job.
+* **spec.mode**: Modo de execução. `cluster` indica que tanto o driver quanto os executores rodam dentro do cluster.
+
+```bash
+  image: ghcr.io/phil-cardoso/spark-pi:latest
+  imagePullPolicy: Always
+  imagePullSecrets:
+    - name: ghcr-secret
+```
+* **image**: Caminho da imagem Docker que será usada para executar o job.
+* **imagePullPolicy**: Define a política de pull da imagem. `Always` força o Kubernetes a sempre buscar a imagem do registry.
+* **imagePullSecrets**: Nome da `secret` com as credenciais de acesso ao registry privado (neste caso, o GHCR).
+
+```bash
+  mainApplicationFile: "local:///opt/spark-apps/pi.py"
+```
+* Caminho absoluto dentro do container que aponta para o script principal Python a ser executado.
+
+```bash
+  sparkVersion: "3.5.0"
+```
+* Versão do Apache Spark usada para executar o job.
+
+```bash
+  restartPolicy:
+    type: Never
+```
+* Define que a aplicação Spark **não será reiniciada automaticamente** em caso de falha.
+
+```bash
+  timeToLiveSeconds: 300
+```
+* Após o término da execução (com sucesso ou erro), os recursos do job serão removidos após 5 minutos.
+
+```bash
+  driver:
+    cores: 1
+    memory: 512m
+    serviceAccount: spark
+    labels:
+      version: 3.5.0
+```
+* **driver**: Configurações do driver Spark.
+    * **cores / memory**: Recursos alocados para o driver.
+    * **serviceAccount**: Conta de serviço usada pelo driver. Deve ter permissões adequadas no cluster.
+    * **labels**: Rótulos que ajudam na identificação ou gerenciamento.
+
+```bash
+  executor:
+    cores: 1
+    instances: 1
+    memory: 512m
+    labels:
+      version: 3.5.0
+```
+* **executor**: Configurações dos executores Spark.
+    * **cores / memory**: Recursos alocados para cada executor.
+    * **instances**: Número de instâncias de executor.
+    * **labels**: Também úteis para identificação.
+
+#### Subindo o manifesto
+Para aplicar o manifesto no cluster e cadastrar a aplicação Spark, execute o seguinte comando:
+```bash
+kubectl apply -f nome_do_arquivo.yaml
+```
+
+Exemplo:
+```bash
+kubectl apply -f spark-pi.yaml
+```
+
+Esse comando cria (ou atualiza) o recurso descrito no arquivo YAML dentro do cluster Kubernetes.

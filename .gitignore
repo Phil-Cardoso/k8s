@@ -1,2 +1,5 @@
+# pasta com secrets do cluster
+secrets/
+
 anotacao.txt
 token_ghcr.txt
